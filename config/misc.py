@@ -1,0 +1,1 @@
+BASE_GAME_NAME = "SANTA"
