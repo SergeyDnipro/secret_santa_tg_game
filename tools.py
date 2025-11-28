@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple, Union
 
 
 def serialize_game_list(game_list: List[tuple]):
@@ -21,3 +21,27 @@ def serialize_game_list(game_list: List[tuple]):
         final_row = "No games found"
 
     return final_row
+
+def serialize_game(game_result: Union[dict, str]):
+    if isinstance(game_result, str):
+        return game_result
+
+    game_data = game_result["game"]
+    players_data = game_result["players"]
+    locked = "Yes" if game_data[3] else "No"
+    completed = "Yes" if game_data[4] else "No"
+
+    msg = (
+        f"Game: {game_data[2]}\n\n"
+        f"Created: {game_data[1]}\n"
+        f"Locked: {locked}\n"
+        f"Completed: {completed}\n\n"
+        f"Players:\n"
+    )
+
+    for number, player in enumerate(players_data, start=1):
+
+        receiver = player[2] if player[2] else "None"
+        msg += f"{number}. {player[1]} -> gives to: {receiver}\n"
+
+    return msg

@@ -30,7 +30,7 @@ class SQLiteDatabaseConnection:
 
 
     def create_check_table(self):
-        """Create the products table if it does not exist."""
+        """Create the games and players tables if it does not exist."""
 
         query = """
         CREATE TABLE IF NOT EXISTS games (
@@ -98,9 +98,14 @@ class SQLiteDatabaseConnection:
 
     def get_game(self, game_name: str) -> dict:
         query = """
-        SELECT *
+        SELECT
+            games.id,
+            games.created_at,
+            games.game_name,
+            games.game_locked,
+            games.game_completed
         FROM games
-        WHERE game_name = :game_name
+        WHERE game_name = :game_name;
         """
 
         result = self.execute_query(query, {"game_name": game_name})
@@ -113,6 +118,30 @@ class SQLiteDatabaseConnection:
             return {"status": False, "message": f"Game: {game_name} already completed", "result": result[0]}
 
         return {"status": True, "message": "Successful", "result": result[0]}
+
+
+    def get_players_by_game_name(self, game_name: str):
+        game = self.get_game(game_name)
+        if not game["result"]:
+            return game["message"]
+
+        query = """
+        SELECT 
+            players.player_id, 
+            players.player_name, 
+            players.player_receiver
+        FROM players
+        LEFT JOIN games ON players.game_id = games.id
+        WHERE games.game_name = :game_name
+        GROUP BY players.player_id;
+        """
+
+        get_params = {"game_name": game_name}
+        players_list = self.execute_query(query, get_params)
+
+        return {"game": game["result"], "players": players_list}
+
+
 
 
     def lock_game_by_name(self, game_name: str) -> str:
@@ -143,7 +172,7 @@ class SQLiteDatabaseConnection:
         try:
             query = """
             INSERT INTO players (game_id, player_name, player_telegram_id)
-            VALUES (:game_id, :player_name, :player_telegram_id)
+            VALUES (:game_id, :player_name, :player_telegram_id);
             """
 
             insert_params = {
@@ -158,74 +187,5 @@ class SQLiteDatabaseConnection:
         except sqlite3.IntegrityError as e:
             return f"You can join a game: {game_name} only once"
 
-
-    #
-    # def get_record(self, day: str = ''):
-    #     with sqlite3.connect(self.database_name) as connection:
-    #         cursor = connection.cursor()
-    #
-    #         query = """
-    #                 SELECT schedule.number_of_lesson, \
-    #                        schedule.start_time, \
-    #                        schedule.end_time, \
-    #                        schedule.name_of_lesson, \
-    #                        schedule.day_of_week \
-    #                 FROM schedule \
-    #                          INNER JOIN week ON week.day_of_week = schedule.day_of_week
-    #                 WHERE week.day_of_week LIKE :day \
-    #                 """
-    #         result = cursor.execute(query, {"day": day}).fetchall()
-    #         return result
-    #
-    # def get_all_records(self):
-    #     with sqlite3.connect(self.database_name) as connection:
-    #         cursor = connection.cursor()
-    #
-    #         query = """
-    #                 SELECT schedule.number_of_lesson, \
-    #                        schedule.start_time, \
-    #                        schedule.end_time, \
-    #                        schedule.name_of_lesson, \
-    #                        schedule.day_of_week \
-    #                 FROM schedule \
-    #                 """
-    #
-    #         result = cursor.execute(query).fetchall()
-    #         return result
-    #
-    # def edit_record(self, *, day: str, lesson: int, name_of_lesson: str):
-    #     with sqlite3.connect(self.database_name) as connection:
-    #         cursor = connection.cursor()
-    #
-    #         query = """
-    #                 UPDATE schedule
-    #                 SET name_of_lesson = :name_of_lesson
-    #                 WHERE schedule.day_of_week = :day \
-    #                   AND schedule.number_of_lesson = :lesson \
-    #                 """
-    #         cursor.execute(query, {"day": day, "lesson": lesson, "name_of_lesson": name_of_lesson})
-    #
-    # def add_record(self, *, day: str, lesson: int, name_of_lesson: str):
-    #     with sqlite3.connect(self.database_name) as connection:
-    #         cursor = connection.cursor()
-    #         values = [day, lesson, TEMP_TIME_LIST[0], TEMP_TIME_LIST[1], name_of_lesson]
-    #         query = """
-    #                 INSERT INTO schedule(day_of_week, number_of_lesson, start_time, end_time, name_of_lesson)
-    #                 VALUES (?, ?, ?, ?, ?) \
-    #                 """
-    #         cursor.execute(query, values)
-    #         connection.commit()
-    #
-    # def delete_record(self, *, day: str, lesson: int):
-    #     with sqlite3.connect(self.database_name) as connection:
-    #         cursor = connection.cursor()
-    #         query = """
-    #                 DELETE \
-    #                 FROM schedule
-    #                 WHERE day_of_week = :day \
-    #                   AND number_of_lesson = :lesson \
-    #                 """
-    #         cursor.execute(query, {"day": day, "lesson": lesson})
-    #         connection.commit()
 
 db = SQLiteDatabaseConnection('santa.sqlite3')
